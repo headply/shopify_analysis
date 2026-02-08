@@ -63,6 +63,13 @@ section[data-testid="stSidebar"] .stMarkdown h2,
 section[data-testid="stSidebar"] .stMarkdown h3 {
     color: var(--primary) !important;
 }
+/* Clean sidebar selectbox and radio styling */
+section[data-testid="stSidebar"] .stSelectbox label,
+section[data-testid="stSidebar"] .stRadio label {
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    color: var(--text) !important;
+}
 
 /* ---------- KPI cards ---------- */
 div[data-testid="stMetric"] {
@@ -116,13 +123,29 @@ div[data-testid="stPlotlyChart"] {
     margin-bottom: 24px;
 }
 .section-header {
-    font-size: 1.05rem;
-    font-weight: 600;
+    font-size: 1.15rem;
+    font-weight: 700;
     color: var(--text);
-    margin: 28px 0 8px 0;
+    margin: 0 0 4px 0;
     display: flex;
     align-items: center;
     gap: 8px;
+}
+.section-desc {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin: 0 0 18px 0;
+    line-height: 1.4;
+}
+
+/* ---------- segment card ---------- */
+.segment-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px 18px 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
 }
 
 /* material icon helper */
@@ -144,6 +167,18 @@ hr {
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
+
+/* ---------- tab styling ---------- */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+}
+.stTabs [data-baseweb="tab"] {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500;
+    font-size: 0.88rem;
+    padding: 8px 20px;
+    border-radius: 8px 8px 0 0;
+}
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -190,6 +225,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+    # --- Date range ---
     min_date = df_raw["order_date"].min().date()
     max_date = df_raw["order_date"].max().date()
     date_range = st.date_input(
@@ -199,14 +235,25 @@ with st.sidebar:
         max_value=max_date,
     )
 
+    st.markdown("")
+
+    # --- Product category (selectbox with "All" option) ---
     all_categories = sorted(df_raw["product_category"].unique())
-    selected_cats = st.multiselect("Product category", all_categories, default=all_categories)
+    cat_options = ["All Categories"] + all_categories
+    cat_choice = st.selectbox("Product Category", cat_options, index=0)
+    selected_cats = all_categories if cat_choice == "All Categories" else [cat_choice]
 
+    # --- Country (selectbox with "All" option) ---
     all_countries = sorted(df_raw["customer_country"].unique())
-    selected_countries = st.multiselect("Country", all_countries, default=all_countries)
+    country_options = ["All Countries"] + all_countries
+    country_choice = st.selectbox("Country", country_options, index=0)
+    selected_countries = all_countries if country_choice == "All Countries" else [country_choice]
 
+    # --- Order status (selectbox with "All" option) ---
     all_statuses = sorted(df_raw["order_status"].unique())
-    selected_statuses = st.multiselect("Order status", all_statuses, default=all_statuses)
+    status_options = ["All Statuses"] + all_statuses
+    status_choice = st.selectbox("Order Status", status_options, index=0)
+    selected_statuses = all_statuses if status_choice == "All Statuses" else [status_choice]
 
     st.markdown("---")
     st.caption("Shopify Sales Dashboard  ·  Demo")
@@ -271,7 +318,7 @@ k3.metric("Avg Order Value", f"${avg_order_value:,.2f}")
 k4.metric("Best‑Selling Product", best_product)
 k5.metric("Unique Customers", f"{total_customers:,}")
 
-st.markdown("---")
+st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Helper: consistent chart layout
@@ -291,248 +338,282 @@ def _layout(fig, height=400, **kwargs):
     return fig
 
 
-# ---------------------------------------------------------------------------
-# Row 1: Revenue over time + Orders per month
-# ---------------------------------------------------------------------------
-st.markdown(
-    '<div class="section-header"><span class="mi">trending_up</span> Sales Trends</div>',
-    unsafe_allow_html=True,
-)
-
-c1, c2 = st.columns(2)
-
-# Revenue over time (line chart)
-with c1:
-    rev_monthly = (
-        df.groupby("order_month")["total_price"]
-        .sum()
-        .reset_index()
-        .rename(columns={"order_month": "Month", "total_price": "Revenue"})
-    )
-    fig1 = px.area(
-        rev_monthly, x="Month", y="Revenue",
-        title="Revenue Over Time",
-        color_discrete_sequence=[PALETTE[0]],
-    )
-    fig1.update_traces(line_shape="spline", fill="tozeroy", fillcolor="rgba(192,96,120,0.12)")
-    _layout(fig1)
-    st.plotly_chart(fig1, use_container_width=True)
-
-# Orders per month (bar chart)
-with c2:
-    orders_monthly = (
-        df.groupby("order_month")["order_id"]
-        .count()
-        .reset_index()
-        .rename(columns={"order_month": "Month", "order_id": "Orders"})
-    )
-    fig2 = px.bar(
-        orders_monthly, x="Month", y="Orders",
-        title="Orders Per Month",
-        color_discrete_sequence=[PALETTE[2]],
-    )
-    _layout(fig2)
-    st.plotly_chart(fig2, use_container_width=True)
-
-st.markdown("---")
+# ===========================================================================
+# TABBED DASHBOARD SEGMENTS
+# ===========================================================================
+tab_sales, tab_products, tab_customers, tab_discounts = st.tabs([
+    "📈  Sales Trends",
+    "📦  Products",
+    "🌍  Customers & Payments",
+    "🏷️  Discounts & Value",
+])
 
 # ---------------------------------------------------------------------------
-# Row 2: Top 10 products + Revenue by category
+# TAB 1: Sales Trends
 # ---------------------------------------------------------------------------
-st.markdown(
-    '<div class="section-header"><span class="mi">category</span> Product Breakdown</div>',
-    unsafe_allow_html=True,
-)
-
-c3, c4 = st.columns(2)
-
-# Top 10 products by revenue (horizontal bar)
-with c3:
-    top10 = (
-        df.groupby("product_name")["total_price"]
-        .sum()
-        .nlargest(10)
-        .sort_values()
-        .reset_index()
-        .rename(columns={"product_name": "Product", "total_price": "Revenue"})
+with tab_sales:
+    st.markdown(
+        '<div class="section-header">'
+        '<span class="mi">trending_up</span> Sales Performance'
+        '</div>'
+        '<div class="section-desc">'
+        'Track revenue growth and order volume over time to identify trends and seasonality.'
+        '</div>',
+        unsafe_allow_html=True,
     )
-    fig3 = px.bar(
-        top10, x="Revenue", y="Product", orientation="h",
-        title="Top 10 Products by Revenue",
-        color_discrete_sequence=[PALETTE[0]],
-    )
-    _layout(fig3, height=420)
-    st.plotly_chart(fig3, use_container_width=True)
 
-# Revenue by category (donut)
-with c4:
-    cat_rev = (
-        df.groupby("product_category")["total_price"]
-        .sum()
-        .reset_index()
-        .rename(columns={"product_category": "Category", "total_price": "Revenue"})
-        .sort_values("Revenue", ascending=False)
-    )
-    fig4 = px.pie(
-        cat_rev, names="Category", values="Revenue",
-        title="Revenue by Category",
-        color_discrete_sequence=PALETTE,
-        hole=0.45,
-    )
-    fig4.update_traces(textinfo="percent+label", textposition="outside")
-    _layout(fig4, height=420)
-    st.plotly_chart(fig4, use_container_width=True)
+    c1, c2 = st.columns(2)
 
-st.markdown("---")
-
-# ---------------------------------------------------------------------------
-# Row 3: Revenue by country + Payment methods
-# ---------------------------------------------------------------------------
-st.markdown(
-    '<div class="section-header"><span class="mi">public</span> Customer Geography &amp; Payment</div>',
-    unsafe_allow_html=True,
-)
-
-c5, c6 = st.columns(2)
-
-# Revenue by country (bar chart — avoids heavy geo library)
-with c5:
-    country_rev = (
-        df.groupby("customer_country")["total_price"]
-        .sum()
-        .nlargest(10)
-        .sort_values()
-        .reset_index()
-        .rename(columns={"customer_country": "Country", "total_price": "Revenue"})
-    )
-    fig5 = px.bar(
-        country_rev, x="Revenue", y="Country", orientation="h",
-        title="Top 10 Countries by Revenue",
-        color_discrete_sequence=[PALETTE[4]],
-    )
-    _layout(fig5, height=400)
-    st.plotly_chart(fig5, use_container_width=True)
-
-# Payment method breakdown (pie)
-with c6:
-    pay_rev = (
-        df.groupby("payment_method")["total_price"]
-        .sum()
-        .reset_index()
-        .rename(columns={"payment_method": "Method", "total_price": "Revenue"})
-        .sort_values("Revenue", ascending=False)
-    )
-    fig6 = px.pie(
-        pay_rev, names="Method", values="Revenue",
-        title="Revenue by Payment Method",
-        color_discrete_sequence=PALETTE,
-        hole=0.45,
-    )
-    fig6.update_traces(textinfo="percent+label", textposition="outside")
-    _layout(fig6, height=400)
-    st.plotly_chart(fig6, use_container_width=True)
-
-st.markdown("---")
-
-# ---------------------------------------------------------------------------
-# Row 4: Sales heatmap (day × hour) + Order status
-# ---------------------------------------------------------------------------
-st.markdown(
-    '<div class="section-header"><span class="mi">schedule</span> When Customers Buy</div>',
-    unsafe_allow_html=True,
-)
-
-c7, c8 = st.columns(2)
-
-# Day × Hour heatmap
-with c7:
-    day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    heatmap_data = (
-        df.groupby(["order_weekday", "order_hour"])["order_id"]
-        .count()
-        .reset_index()
-        .rename(columns={"order_weekday": "Day", "order_hour": "Hour", "order_id": "Orders"})
-    )
-    heatmap_pivot = heatmap_data.pivot(index="Day", columns="Hour", values="Orders").fillna(0)
-    heatmap_pivot = heatmap_pivot.reindex(day_order)
-
-    fig7 = go.Figure(
-        data=go.Heatmap(
-            z=heatmap_pivot.values,
-            x=[f"{h}:00" for h in heatmap_pivot.columns],
-            y=heatmap_pivot.index,
-            colorscale="RdPu",
-            hoverongaps=False,
+    # Revenue over time (area chart)
+    with c1:
+        rev_monthly = (
+            df.groupby("order_month")["total_price"]
+            .sum()
+            .reset_index()
+            .rename(columns={"order_month": "Month", "total_price": "Revenue"})
         )
+        fig1 = px.area(
+            rev_monthly, x="Month", y="Revenue",
+            title="Revenue Over Time",
+            color_discrete_sequence=[PALETTE[0]],
+        )
+        fig1.update_traces(line_shape="spline", fill="tozeroy", fillcolor="rgba(192,96,120,0.12)")
+        _layout(fig1)
+        st.plotly_chart(fig1, use_container_width=True)
+
+    # Orders per month (bar chart)
+    with c2:
+        orders_monthly = (
+            df.groupby("order_month")["order_id"]
+            .count()
+            .reset_index()
+            .rename(columns={"order_month": "Month", "order_id": "Orders"})
+        )
+        fig2 = px.bar(
+            orders_monthly, x="Month", y="Orders",
+            title="Orders Per Month",
+            color_discrete_sequence=[PALETTE[2]],
+        )
+        _layout(fig2)
+        st.plotly_chart(fig2, use_container_width=True)
+
+    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+
+    # --- When Customers Buy (heatmap + order status) ---
+    st.markdown(
+        '<div class="section-header">'
+        '<span class="mi">schedule</span> When Customers Buy'
+        '</div>'
+        '<div class="section-desc">'
+        'Identify peak shopping hours and days to optimize marketing and staffing.'
+        '</div>',
+        unsafe_allow_html=True,
     )
-    fig7.update_layout(title="Orders by Day & Hour")
-    _layout(fig7, height=380)
-    st.plotly_chart(fig7, use_container_width=True)
 
-# Order status breakdown (bar)
-with c8:
-    status_counts = (
-        df["order_status"]
-        .value_counts()
-        .reset_index()
-        .rename(columns={"order_status": "Status", "count": "Orders"})
-    )
-    fig8 = px.bar(
-        status_counts, x="Orders", y="Status", orientation="h",
-        title="Orders by Status",
-        color="Status",
-        color_discrete_sequence=PALETTE,
-    )
-    fig8.update_layout(showlegend=False)
-    _layout(fig8, height=380)
-    st.plotly_chart(fig8, use_container_width=True)
+    c7, c8 = st.columns(2)
 
-st.markdown("---")
+    # Day × Hour heatmap
+    with c7:
+        day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        heatmap_data = (
+            df.groupby(["order_weekday", "order_hour"])["order_id"]
+            .count()
+            .reset_index()
+            .rename(columns={"order_weekday": "Day", "order_hour": "Hour", "order_id": "Orders"})
+        )
+        heatmap_pivot = heatmap_data.pivot(index="Day", columns="Hour", values="Orders").fillna(0)
+        heatmap_pivot = heatmap_pivot.reindex(day_order)
 
-# ---------------------------------------------------------------------------
-# Row 5: Discount usage + AOV trend
-# ---------------------------------------------------------------------------
-st.markdown(
-    '<div class="section-header"><span class="mi">local_offer</span> Discounts &amp; Value Trends</div>',
-    unsafe_allow_html=True,
-)
+        fig7 = go.Figure(
+            data=go.Heatmap(
+                z=heatmap_pivot.values,
+                x=[f"{h}:00" for h in heatmap_pivot.columns],
+                y=heatmap_pivot.index,
+                colorscale="RdPu",
+                hoverongaps=False,
+            )
+        )
+        fig7.update_layout(title="Orders by Day & Hour")
+        _layout(fig7, height=380)
+        st.plotly_chart(fig7, use_container_width=True)
 
-c9, c10 = st.columns(2)
-
-# Discount code usage (bar)
-with c9:
-    disc_df = df[df["discount_code"] != ""].copy()
-    if len(disc_df):
-        disc_counts = (
-            disc_df["discount_code"]
+    # Order status breakdown (bar)
+    with c8:
+        status_counts = (
+            df["order_status"]
             .value_counts()
             .reset_index()
-            .rename(columns={"discount_code": "Code", "count": "Times Used"})
+            .rename(columns={"order_status": "Status", "count": "Orders"})
         )
-        fig9 = px.bar(
-            disc_counts, x="Times Used", y="Code", orientation="h",
-            title="Most Popular Discount Codes",
-            color_discrete_sequence=[PALETTE[3]],
+        fig8 = px.bar(
+            status_counts, x="Orders", y="Status", orientation="h",
+            title="Orders by Status",
+            color="Status",
+            color_discrete_sequence=PALETTE,
         )
-        _layout(fig9, height=380)
-        st.plotly_chart(fig9, use_container_width=True)
-    else:
-        st.info("No discount codes used in the selected period.")
+        fig8.update_layout(showlegend=False)
+        _layout(fig8, height=380)
+        st.plotly_chart(fig8, use_container_width=True)
 
-# Average order value trend (line)
-with c10:
-    aov_monthly = (
-        df.groupby("order_month")["total_price"]
-        .mean()
-        .reset_index()
-        .rename(columns={"order_month": "Month", "total_price": "AOV"})
+
+# ---------------------------------------------------------------------------
+# TAB 2: Products
+# ---------------------------------------------------------------------------
+with tab_products:
+    st.markdown(
+        '<div class="section-header">'
+        '<span class="mi">category</span> Product Performance'
+        '</div>'
+        '<div class="section-desc">'
+        'Discover top-selling products and see how revenue distributes across categories.'
+        '</div>',
+        unsafe_allow_html=True,
     )
-    fig10 = px.line(
-        aov_monthly, x="Month", y="AOV",
-        title="Average Order Value Over Time",
-        color_discrete_sequence=[PALETTE[5]],
-        markers=True,
+
+    c3, c4 = st.columns(2)
+
+    # Top 10 products by revenue (horizontal bar)
+    with c3:
+        top10 = (
+            df.groupby("product_name")["total_price"]
+            .sum()
+            .nlargest(10)
+            .sort_values()
+            .reset_index()
+            .rename(columns={"product_name": "Product", "total_price": "Revenue"})
+        )
+        fig3 = px.bar(
+            top10, x="Revenue", y="Product", orientation="h",
+            title="Top 10 Products by Revenue",
+            color_discrete_sequence=[PALETTE[0]],
+        )
+        _layout(fig3, height=420)
+        st.plotly_chart(fig3, use_container_width=True)
+
+    # Revenue by category (donut)
+    with c4:
+        cat_rev = (
+            df.groupby("product_category")["total_price"]
+            .sum()
+            .reset_index()
+            .rename(columns={"product_category": "Category", "total_price": "Revenue"})
+            .sort_values("Revenue", ascending=False)
+        )
+        fig4 = px.pie(
+            cat_rev, names="Category", values="Revenue",
+            title="Revenue by Category",
+            color_discrete_sequence=PALETTE,
+            hole=0.45,
+        )
+        fig4.update_traces(textinfo="percent+label", textposition="outside")
+        _layout(fig4, height=420)
+        st.plotly_chart(fig4, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
+# TAB 3: Customers & Payments
+# ---------------------------------------------------------------------------
+with tab_customers:
+    st.markdown(
+        '<div class="section-header">'
+        '<span class="mi">public</span> Customer Geography'
+        '</div>'
+        '<div class="section-desc">'
+        'Understand where your customers are located and which payment methods they prefer.'
+        '</div>',
+        unsafe_allow_html=True,
     )
-    fig10.update_traces(line_shape="spline")
-    _layout(fig10, height=380)
-    st.plotly_chart(fig10, use_container_width=True)
+
+    c5, c6 = st.columns(2)
+
+    # Revenue by country (bar chart)
+    with c5:
+        country_rev = (
+            df.groupby("customer_country")["total_price"]
+            .sum()
+            .nlargest(10)
+            .sort_values()
+            .reset_index()
+            .rename(columns={"customer_country": "Country", "total_price": "Revenue"})
+        )
+        fig5 = px.bar(
+            country_rev, x="Revenue", y="Country", orientation="h",
+            title="Top 10 Countries by Revenue",
+            color_discrete_sequence=[PALETTE[4]],
+        )
+        _layout(fig5, height=400)
+        st.plotly_chart(fig5, use_container_width=True)
+
+    # Payment method breakdown (pie)
+    with c6:
+        pay_rev = (
+            df.groupby("payment_method")["total_price"]
+            .sum()
+            .reset_index()
+            .rename(columns={"payment_method": "Method", "total_price": "Revenue"})
+            .sort_values("Revenue", ascending=False)
+        )
+        fig6 = px.pie(
+            pay_rev, names="Method", values="Revenue",
+            title="Revenue by Payment Method",
+            color_discrete_sequence=PALETTE,
+            hole=0.45,
+        )
+        fig6.update_traces(textinfo="percent+label", textposition="outside")
+        _layout(fig6, height=400)
+        st.plotly_chart(fig6, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
+# TAB 4: Discounts & Value Trends
+# ---------------------------------------------------------------------------
+with tab_discounts:
+    st.markdown(
+        '<div class="section-header">'
+        '<span class="mi">local_offer</span> Discounts &amp; Order Value'
+        '</div>'
+        '<div class="section-desc">'
+        'Monitor discount code usage and track how the average order value evolves over time.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    c9, c10 = st.columns(2)
+
+    # Discount code usage (bar)
+    with c9:
+        disc_df = df[df["discount_code"] != ""].copy()
+        if len(disc_df):
+            disc_counts = (
+                disc_df["discount_code"]
+                .value_counts()
+                .reset_index()
+                .rename(columns={"discount_code": "Code", "count": "Times Used"})
+            )
+            fig9 = px.bar(
+                disc_counts, x="Times Used", y="Code", orientation="h",
+                title="Most Popular Discount Codes",
+                color_discrete_sequence=[PALETTE[3]],
+            )
+            _layout(fig9, height=380)
+            st.plotly_chart(fig9, use_container_width=True)
+        else:
+            st.info("No discount codes used in the selected period.")
+
+    # Average order value trend (line)
+    with c10:
+        aov_monthly = (
+            df.groupby("order_month")["total_price"]
+            .mean()
+            .reset_index()
+            .rename(columns={"order_month": "Month", "total_price": "AOV"})
+        )
+        fig10 = px.line(
+            aov_monthly, x="Month", y="AOV",
+            title="Average Order Value Over Time",
+            color_discrete_sequence=[PALETTE[5]],
+            markers=True,
+        )
+        fig10.update_traces(line_shape="spline")
+        _layout(fig10, height=380)
+        st.plotly_chart(fig10, use_container_width=True)
