@@ -102,7 +102,7 @@ ORDER_STATUSES = [
 ]
 
 DISCOUNT_CODES = [
-    None, None, None, None, None, None, None,  # ~70 % no discount
+    None, None, None, None, None, None, None,  # ~70% no discount
     "WELCOME10", "SUMMER15", "BEAUTY20", "VIP25", "FLASH10",
     "HOLIDAY15", "NEWYEAR20", "BDAY10",
 ]
@@ -211,7 +211,7 @@ def generate_dataset():
         "order_status",
     ]
 
-    customer_pool_size = int(NUM_ORDERS * 0.55)  # ~45 % repeat customers
+    customer_pool_size = int(NUM_ORDERS * 0.55)  # ~55% unique customers, ~45% repeat rate
 
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

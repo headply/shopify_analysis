@@ -237,7 +237,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(
-    '<div class="dashboard-subtitle">Beauty &amp; Skincare Store  ·  Real‑time overview of sales performance</div>',
+    '<div class="dashboard-subtitle">Beauty &amp; Skincare Store  ·  Performance overview of sales data</div>',
     unsafe_allow_html=True,
 )
 
