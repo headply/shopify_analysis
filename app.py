@@ -163,10 +163,17 @@ hr {
     margin: 18px 0;
 }
 
-/* Hide default Streamlit footer & menu */
+/* Hide default Streamlit footer & menu, but keep sidebar toggle visible */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header {visibility: hidden;}
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    backdrop-filter: none !important;
+}
+header[data-testid="stHeader"] .stAppDeployButton,
+header[data-testid="stHeader"] [data-testid="stStatusWidget"] {
+    visibility: hidden;
+}
 
 /* ---------- tab styling ---------- */
 .stTabs [data-baseweb="tab-list"] {
@@ -178,6 +185,26 @@ header {visibility: hidden;}
     font-size: 0.88rem;
     padding: 8px 20px;
     border-radius: 8px 8px 0 0;
+}
+/* Material icons before each tab label */
+.stTabs [data-baseweb="tab"] p::before {
+    font-family: 'Material Symbols Rounded';
+    margin-right: 6px;
+    vertical-align: middle;
+    font-size: 18px;
+    color: var(--primary);
+}
+.stTabs [data-baseweb="tab"]:nth-child(1) p::before {
+    content: 'trending_up';
+}
+.stTabs [data-baseweb="tab"]:nth-child(2) p::before {
+    content: 'inventory_2';
+}
+.stTabs [data-baseweb="tab"]:nth-child(3) p::before {
+    content: 'groups';
+}
+.stTabs [data-baseweb="tab"]:nth-child(4) p::before {
+    content: 'sell';
 }
 </style>
 """
@@ -342,10 +369,10 @@ def _layout(fig, height=400, **kwargs):
 # TABBED DASHBOARD SEGMENTS
 # ===========================================================================
 tab_sales, tab_products, tab_customers, tab_discounts = st.tabs([
-    "📈  Sales Trends",
-    "📦  Products",
-    "🌍  Customers & Payments",
-    "🏷️  Discounts & Value",
+    "Sales Trends",
+    "Products",
+    "Customers & Payments",
+    "Discounts & Value",
 ])
 
 # ---------------------------------------------------------------------------
