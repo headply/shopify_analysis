@@ -1,0 +1,204 @@
+"""
+Helper script to generate the analysis Jupyter notebook.
+Run once:  python create_notebook.py
+"""
+
+import json
+import os
+
+NOTEBOOK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analysis.ipynb")
+
+cells = [
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "# Shopify Sales — Exploratory Data Analysis\n",
+            "\n",
+            "This notebook explores the generated Shopify orders dataset for a fictional\n",
+            "**Beauty & Skincare** online store (~65 000 orders, 18 months).\n",
+        ],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "import pandas as pd\n",
+            "import plotly.express as px\n",
+            "import plotly.io as pio\n",
+            "\n",
+            "pio.templates.default = 'plotly_white'\n",
+            "\n",
+            "df = pd.read_csv('data/shopify_orders.csv', parse_dates=['order_date'])\n",
+            "df['order_month'] = df['order_date'].dt.to_period('M').dt.to_timestamp()\n",
+            "df.head()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": ["## Dataset Overview\n"],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "print(f'Rows : {len(df):,}')\n",
+            "print(f'Columns: {df.shape[1]}')\n",
+            "print(f'Date range: {df[\"order_date\"].min().date()} → {df[\"order_date\"].max().date()}')\n",
+            "df.describe()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": ["## Revenue Over Time\n"],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "rev = df.groupby('order_month')['total_price'].sum().reset_index()\n",
+            "fig = px.area(rev, x='order_month', y='total_price',\n",
+            "              labels={'order_month': 'Month', 'total_price': 'Revenue ($)'},\n",
+            "              title='Monthly Revenue')\n",
+            "fig.update_traces(line_shape='spline')\n",
+            "fig.show()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": ["## Orders Per Month\n"],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "orders = df.groupby('order_month')['order_id'].count().reset_index()\n",
+            "fig = px.bar(orders, x='order_month', y='order_id',\n",
+            "             labels={'order_month': 'Month', 'order_id': 'Orders'},\n",
+            "             title='Orders Per Month')\n",
+            "fig.show()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": ["## Top 10 Products by Revenue\n"],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "top10 = df.groupby('product_name')['total_price'].sum().nlargest(10).sort_values().reset_index()\n",
+            "fig = px.bar(top10, x='total_price', y='product_name', orientation='h',\n",
+            "             labels={'total_price': 'Revenue ($)', 'product_name': 'Product'},\n",
+            "             title='Top 10 Products by Revenue')\n",
+            "fig.show()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": ["## Revenue by Category\n"],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "cat_rev = df.groupby('product_category')['total_price'].sum().reset_index()\n",
+            "fig = px.pie(cat_rev, names='product_category', values='total_price',\n",
+            "             title='Revenue by Category', hole=0.4)\n",
+            "fig.show()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": ["## Revenue by Country (Top 10)\n"],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "country = df.groupby('customer_country')['total_price'].sum().nlargest(10).sort_values().reset_index()\n",
+            "fig = px.bar(country, x='total_price', y='customer_country', orientation='h',\n",
+            "             labels={'total_price': 'Revenue ($)', 'customer_country': 'Country'},\n",
+            "             title='Top 10 Countries by Revenue')\n",
+            "fig.show()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": ["## Order Status Distribution\n"],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "status = df['order_status'].value_counts().reset_index()\n",
+            "fig = px.bar(status, x='count', y='order_status', orientation='h',\n",
+            "             labels={'count': 'Orders', 'order_status': 'Status'},\n",
+            "             title='Order Status Distribution')\n",
+            "fig.show()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": ["## Discount Code Popularity\n"],
+    },
+    {
+        "cell_type": "code",
+        "metadata": {},
+        "source": [
+            "disc = df[df['discount_code'] != '']['discount_code'].value_counts().reset_index()\n",
+            "fig = px.bar(disc, x='count', y='discount_code', orientation='h',\n",
+            "             labels={'count': 'Times Used', 'discount_code': 'Code'},\n",
+            "             title='Most Popular Discount Codes')\n",
+            "fig.show()\n",
+        ],
+        "execution_count": None,
+        "outputs": [],
+    },
+]
+
+notebook = {
+    "nbformat": 4,
+    "nbformat_minor": 5,
+    "metadata": {
+        "kernelspec": {
+            "display_name": "Python 3",
+            "language": "python",
+            "name": "python3",
+        },
+        "language_info": {
+            "name": "python",
+            "version": "3.10.0",
+        },
+    },
+    "cells": cells,
+}
+
+with open(NOTEBOOK_PATH, "w", encoding="utf-8") as f:
+    json.dump(notebook, f, indent=1)
+
+print(f"Created {NOTEBOOK_PATH}")
