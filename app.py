@@ -239,21 +239,21 @@ with st.sidebar:
 
     # --- Product category (selectbox with "All" option) ---
     all_categories = sorted(df_raw["product_category"].unique())
-    _cat_options = ["All Categories"] + all_categories
-    _cat_choice = st.selectbox("Product Category", _cat_options, index=0)
-    selected_cats = all_categories if _cat_choice == "All Categories" else [_cat_choice]
+    cat_options = ["All Categories"] + all_categories
+    cat_choice = st.selectbox("Product Category", cat_options, index=0)
+    selected_cats = all_categories if cat_choice == "All Categories" else [cat_choice]
 
     # --- Country (selectbox with "All" option) ---
     all_countries = sorted(df_raw["customer_country"].unique())
-    _country_options = ["All Countries"] + all_countries
-    _country_choice = st.selectbox("Country", _country_options, index=0)
-    selected_countries = all_countries if _country_choice == "All Countries" else [_country_choice]
+    country_options = ["All Countries"] + all_countries
+    country_choice = st.selectbox("Country", country_options, index=0)
+    selected_countries = all_countries if country_choice == "All Countries" else [country_choice]
 
     # --- Order status (selectbox with "All" option) ---
     all_statuses = sorted(df_raw["order_status"].unique())
-    _status_options = ["All Statuses"] + all_statuses
-    _status_choice = st.selectbox("Order Status", _status_options, index=0)
-    selected_statuses = all_statuses if _status_choice == "All Statuses" else [_status_choice]
+    status_options = ["All Statuses"] + all_statuses
+    status_choice = st.selectbox("Order Status", status_options, index=0)
+    selected_statuses = all_statuses if status_choice == "All Statuses" else [status_choice]
 
     st.markdown("---")
     st.caption("Shopify Sales Dashboard  ·  Demo")
